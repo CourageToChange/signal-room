@@ -1,0 +1,92 @@
+version: 2
+revision: fixture-v2
+polling:
+  proxmox_seconds: 20
+  https_seconds: 30
+  backup_seconds: 900
+  tls_seconds: 21600
+  fixture_seconds: 5
+  provider_timeout_seconds: 8
+  max_backoff_seconds: 300
+  jitter_ratio: 0.1
+thresholds:
+  cpu_warning_ratio: 0.90
+  memory_warning_ratio: 0.90
+  memory_critical_ratio: 0.97
+  disk_warning_ratio: 0.85
+  disk_critical_ratio: 0.95
+  backup_warning_hours: 192
+  backup_critical_hours: 240
+  certificate_warning_days: 30
+  certificate_critical_days: 7
+  failure_observations: 3
+  recovery_observations: 2
+  correlation_window_seconds: 60
+  resource_warning_seconds: 300
+probes:
+  allowed_hosts: []
+  max_concurrency: 8
+  max_response_bytes: 65536
+assets:
+  - id: atlas-node
+    label: Atlas Node
+    kind: node
+    checks:
+      - id: fixture-health
+        type: fixture
+    runbook_id: host-pressure
+    sort_order: 10
+  - id: orchid-guest
+    label: Orchid Guest
+    kind: guest
+    depends_on: [atlas-node]
+    checks:
+      - id: fixture-health
+        type: fixture
+    runbook_id: guest-pressure
+    sort_order: 20
+  - id: gallery-service
+    label: Gallery
+    kind: service
+    depends_on: [orchid-guest]
+    checks:
+      - id: fixture-health
+        type: fixture
+    runbook_id: service-unavailable
+    sort_order: 30
+  - id: notes-service
+    label: Notes
+    kind: service
+    depends_on: [orchid-guest]
+    checks:
+      - id: fixture-health
+        type: fixture
+    runbook_id: service-unavailable
+    sort_order: 40
+  - id: portfolio-service
+    label: Portfolio
+    kind: service
+    depends_on: [orchid-guest]
+    checks:
+      - id: fixture-health
+        type: fixture
+    runbook_id: service-unavailable
+    sort_order: 50
+  - id: vault-storage
+    label: Vault Storage
+    kind: storage
+    depends_on: [atlas-node]
+    checks:
+      - id: fixture-health
+        type: fixture
+    runbook_id: storage-pressure
+    sort_order: 60
+  - id: backup-chain
+    label: Backup Chain
+    kind: external
+    depends_on: [atlas-node]
+    checks:
+      - id: fixture-health
+        type: fixture
+    runbook_id: backup-stale
+    sort_order: 70

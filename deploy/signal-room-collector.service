@@ -1,0 +1,50 @@
+[Unit]
+Description=Signal Room read-only telemetry collector
+After=signal-room-core.service network-online.target
+Requires=signal-room-core.service
+Wants=network-online.target
+PartOf=signal-room.target
+
+[Service]
+Type=simple
+User=signal-room-collector
+Group=signal-room-collector
+SupplementaryGroups=signal-room signal-room-ingest
+WorkingDirectory=/opt/signal-room/current
+EnvironmentFile=/etc/signal-room/collector.env
+EnvironmentFile=/opt/signal-room/current/RELEASE_ENV
+Environment=SIGNAL_ROOM_RUNTIME_ROLE=collector
+ExecStart=/opt/signal-room/current/.venv/bin/signal-room collect
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+UMask=0077
+MemoryHigh=128M
+MemoryMax=160M
+TasksMax=64
+
+[Install]
+WantedBy=signal-room.target

@@ -1,0 +1,19 @@
+# scripts/build-release.py copies bundled sources byte-for-byte out of the working tree,
+# so a CRLF checkout would both ship an unparseable nftables configuration and make a
+# Windows-built bundle differ from the Linux bundle the Verify workflow builds. Signal Room
+# only ever runs on Linux, so every text file checks out as LF on every platform and the
+# release stays reproducible regardless of where it was built.
+* text=auto eol=lf
+.gitattributes text eol=lf
+
+*.py text eol=lf
+*.sh text eol=lf
+*.sql text eol=lf
+*.service text eol=lf
+*.target text eol=lf
+*.timer text eol=lf
+
+# Explicit for the files whose line endings are load-bearing at runtime.
+*.conf text eol=lf
+*.json text eol=lf
+*.lock text eol=lf

@@ -1,0 +1,55 @@
+[Unit]
+Description=Signal Room outbound-only Cloudflare Tunnel
+After=network-online.target nftables.service
+Wants=network-online.target
+Requires=nftables.service
+
+[Service]
+Type=notify
+User=cloudflared
+Group=cloudflared
+WorkingDirectory=/var/lib/cloudflared
+Environment=HOME=/var/lib/cloudflared
+ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel --metrics 127.0.0.1:20241 --edge-ip-version 4 --protocol auto run --token-file /etc/cloudflared/tunnel.token
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=0
+TimeoutStopSec=20s
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_NETLINK
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+UMask=0077
+StateDirectory=cloudflared
+StateDirectoryMode=0700
+RuntimeDirectory=cloudflared
+RuntimeDirectoryMode=0700
+ReadOnlyPaths=/etc/cloudflared/tunnel.token
+# The 650 MiB combined Signal Room + cloudflared RSS ceiling in
+# docs/RELEASE-GATES.md leaves ample headroom.
+MemoryHigh=96M
+MemoryMax=256M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

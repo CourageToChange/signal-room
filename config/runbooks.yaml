@@ -1,0 +1,44 @@
+version: 1
+runbooks:
+  host-pressure:
+    title: Host resource pressure
+    summary: Confirm whether pressure is host-wide before inspecting individual guests.
+    checks:
+      - Compare CPU, memory, and storage trends over the same five-minute window.
+      - Check whether several otherwise unrelated guests changed state together.
+      - Preserve the incident timeline before considering a controlled intervention.
+  guest-pressure:
+    title: Shared guest resource pressure
+    summary: Treat dependent service failures as symptoms until the shared guest is cleared.
+    checks:
+      - Confirm the guest is running and review memory and CPU saturation.
+      - Compare latency changes across every service hosted by the guest.
+      - Check the latest deployment or scheduled task before restarting anything.
+  service-unavailable:
+    title: Service unavailable
+    summary: Separate an application failure from its guest, tunnel, and dependency chain.
+    checks:
+      - Confirm whether the parent guest is healthy.
+      - Compare the origin check with edge reachability.
+      - Review recent changes and application logs through the normal operator runbook.
+  storage-pressure:
+    title: Storage pressure
+    summary: Verify capacity and backup safety before deleting or moving data.
+    checks:
+      - Confirm the affected storage and its growth rate.
+      - Check active backup or migration tasks.
+      - Follow the storage-specific cleanup runbook; do not delete data from Signal Room.
+  backup-stale:
+    title: Backup freshness failure
+    summary: Establish whether the job failed, never ran, or completed somewhere unexpected.
+    checks:
+      - Inspect the latest backup task status and destination.
+      - Confirm the expected schedule and retention window.
+      - Perform recovery work only through the documented backup runbook.
+  certificate-expiry:
+    title: Certificate expiry
+    summary: Confirm the served certificate and renewal path before the warning becomes an outage.
+    checks:
+      - Verify the certificate currently served by the configured hostname.
+      - Confirm the expected issuer, expiry date, and automated renewal owner.
+      - Test renewal through the normal certificate runbook without changing DNS here.

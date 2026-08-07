@@ -1,0 +1,47 @@
+[Unit]
+Description=Signal Room ordered database migrations
+Before=signal-room-core.service
+PartOf=signal-room.target
+
+[Service]
+Type=oneshot
+User=signal-room-core
+Group=signal-room-core
+SupplementaryGroups=signal-room
+WorkingDirectory=/opt/signal-room/current
+EnvironmentFile=/etc/signal-room/core.env
+EnvironmentFile=/opt/signal-room/current/RELEASE_ENV
+Environment=SIGNAL_ROOM_RUNTIME_ROLE=maintenance
+ExecStart=/opt/signal-room/current/.venv/bin/signal-room migrate --backup-directory /var/backups/signal-room/pre-migration
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadWritePaths=/var/lib/signal-room /var/backups/signal-room
+UMask=0077
+MemoryMax=160M
+TasksMax=32
+
+[Install]
+WantedBy=signal-room.target

@@ -1,0 +1,7 @@
+[Unit]
+Description=Signal Room flagship services
+Wants=signal-room-migrate.service signal-room-core.service signal-room-collector.service signal-room-web.service signal-room-notifier.service
+After=network-online.target
+
+[Install]
+WantedBy=multi-user.target

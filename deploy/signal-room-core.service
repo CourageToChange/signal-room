@@ -1,0 +1,56 @@
+[Unit]
+Description=Signal Room trusted database and incident core
+After=signal-room-migrate.service
+Requires=signal-room-migrate.service
+PartOf=signal-room.target
+
+[Service]
+Type=simple
+User=signal-room-core
+Group=signal-room-core
+SupplementaryGroups=signal-room signal-room-query signal-room-ingest signal-room-notify
+WorkingDirectory=/opt/signal-room/current
+EnvironmentFile=/etc/signal-room/core.env
+EnvironmentFile=/opt/signal-room/current/RELEASE_ENV
+Environment=SIGNAL_ROOM_RUNTIME_ROLE=core
+ExecStart=/opt/signal-room/current/.venv/bin/signal-room core
+ExecStartPost=/opt/signal-room/current/.venv/bin/python /opt/signal-room/current/deploy/wait-for-core.py --timeout 10 /run/signal-room/query.sock /run/signal-room/ingest.sock /run/signal-room/notifier.sock /run/signal-room/maintenance.sock
+Restart=on-failure
+RestartSec=3s
+RuntimeDirectory=signal-room
+RuntimeDirectoryMode=0711
+StateDirectory=signal-room
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadWritePaths=/var/lib/signal-room /var/backups/signal-room /run/signal-room
+UMask=0077
+MemoryHigh=160M
+MemoryMax=200M
+TasksMax=64
+
+[Install]
+WantedBy=signal-room.target

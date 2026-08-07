@@ -1,0 +1,113 @@
+version: 2
+revision: replace-with-deployment-revision
+polling:
+  proxmox_seconds: 20
+  https_seconds: 30
+  backup_seconds: 900
+  tls_seconds: 21600
+  fixture_seconds: 5
+  provider_timeout_seconds: 8
+  max_backoff_seconds: 300
+  jitter_ratio: 0.1
+thresholds:
+  cpu_warning_ratio: 0.90
+  memory_warning_ratio: 0.90
+  memory_critical_ratio: 0.97
+  disk_warning_ratio: 0.85
+  disk_critical_ratio: 0.95
+  backup_warning_hours: 192
+  backup_critical_hours: 240
+  certificate_warning_days: 30
+  certificate_critical_days: 7
+  failure_observations: 3
+  recovery_observations: 2
+  correlation_window_seconds: 60
+  resource_warning_seconds: 300
+probes:
+  allowed_hosts:
+    - first.example.invalid
+    - second.example.invalid
+  max_concurrency: 8
+  max_response_bytes: 65536
+assets:
+  - id: primary-node
+    label: Primary Node
+    kind: node
+    checks:
+      - id: pve-node
+        type: proxmox_node
+        node: REPLACE_NODE
+    runbook_id: host-pressure
+    sort_order: 10
+  - id: shared-guest
+    label: Shared Guest
+    kind: guest
+    depends_on: [primary-node]
+    checks:
+      - id: pve-guest
+        type: proxmox_guest
+        node: REPLACE_NODE
+        guest_id: 900001 # REPLACE with the intended monitored VMID; never assume a separate backup container
+    runbook_id: guest-pressure
+    sort_order: 20
+  - id: first-service
+    label: First Service
+    kind: service
+    depends_on: [shared-guest]
+    checks:
+      - id: origin-health
+        type: https
+        mode: origin
+        url: https://first.example.invalid/api/health
+        expected_statuses: [200]
+        allowed_ports: [443]
+    runbook_id: service-unavailable
+    sort_order: 30
+  - id: second-service
+    label: Second Service
+    kind: service
+    depends_on: [shared-guest]
+    checks:
+      - id: edge-health
+        type: https
+        mode: edge
+        url: https://second.example.invalid/
+        expected_statuses: [200, 302]
+        allowed_ports: [443]
+    runbook_id: service-unavailable
+    sort_order: 40
+  - id: primary-storage
+    label: Primary Storage
+    kind: storage
+    depends_on: [primary-node]
+    checks:
+      - id: pve-storage
+        type: proxmox_storage
+        node: REPLACE_NODE
+        storage: REPLACE_STORAGE
+    runbook_id: storage-pressure
+    sort_order: 50
+  - id: backup-chain
+    label: Backup Chain
+    kind: external
+    depends_on: [primary-node]
+    checks:
+      - id: nightly-shared-guest
+        type: proxmox_backup
+        node: REPLACE_NODE
+        # Scheduled PVE parent tasks have no stable job ID. Use the explicitly reviewed
+        # guest ID and keep its backup job dedicated to that guest.
+        guest_id: 900001 # REPLACE with the same explicitly reviewed VMID
+    runbook_id: backup-stale
+    sort_order: 60
+  - id: public-certificate
+    label: Public Certificate
+    kind: external
+    depends_on: [first-service]
+    checks:
+      - id: public-tls
+        type: tls
+        url: https://first.example.invalid/
+        allowed_ports: [443]
+    runbook_id: certificate-expiry
+    sort_order: 70

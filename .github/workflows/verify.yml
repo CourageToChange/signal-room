@@ -1,0 +1,172 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python: ["3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - run: python -m pip install --no-build-isolation --no-deps .
+      - run: ruff check .
+      - run: mypy backend/signal_room
+      - run: pytest --cov-fail-under=90
+      - run: pip-audit -r requirements.lock
+      - run: pip-audit -r requirements-dev.lock
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - run: python -m pip install --no-build-isolation --no-deps .
+      - run: python -m signal_room.cli export-demo
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: frontend
+        run: npm run audit
+      - working-directory: frontend
+        run: npm run lint
+      - working-directory: frontend
+        run: npm run typecheck
+      - working-directory: frontend
+        run: npm test
+      - working-directory: frontend
+        run: npm run build
+      - working-directory: frontend
+        run: npx playwright install --with-deps chromium firefox webkit
+      - working-directory: frontend
+        run: npm run test:e2e
+
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - run: python -m pip install --no-build-isolation --no-deps .
+      - name: Python security scan
+        run: bandit -q -r backend/signal_room deploy scripts
+      - name: Repository secret scan
+        run: git ls-files -z | xargs -0 detect-secrets-hook --
+      - name: Verify shell scripts
+        env:
+          SHELLCHECK_SHA256: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198 # pragma: allowlist secret
+          SHELLCHECK_URL: https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
+        run: |
+          curl --fail --location --silent --show-error --proto '=https' --tlsv1.2 \
+            --output /tmp/shellcheck.tar.xz "$SHELLCHECK_URL"
+          echo "$SHELLCHECK_SHA256  /tmp/shellcheck.tar.xz" | sha256sum --check --strict
+          tar --extract --xz --file /tmp/shellcheck.tar.xz --directory /tmp
+          /tmp/shellcheck-v0.11.0/shellcheck deploy/*.sh
+          bash -n deploy/*.sh
+      - name: Verify systemd units
+        run: |
+          sudo install -d -m 0755 /opt/signal-room/current/.venv/bin
+          sudo ln -s /bin/true /opt/signal-room/current/.venv/bin/signal-room
+          sudo ln -s /bin/true /opt/signal-room/current/.venv/bin/python
+          # The connector binary is installed on the target container from a pinned, checksum-verified
+          # package; the runner only needs an executable at the same path so that
+          # systemd-analyze can verify the unit's directives.
+          sudo ln -s /bin/true /usr/bin/cloudflared
+          systemd-analyze verify deploy/*.service deploy/*.timer deploy/*.target
+
+  release-bundles:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [backend, frontend, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - run: python -m pip install --no-build-isolation --no-deps .
+      - working-directory: frontend
+        run: npm ci
+      - run: bash -n deploy/install-release.sh
+      - name: Build reproducible bundles for the exact commit
+        run: |
+          epoch="$(git show -s --format=%ct "$GITHUB_SHA")"
+          python scripts/build-release.py \
+            --build-sha "$GITHUB_SHA" --source-date-epoch "$epoch"
+          python scripts/build-release.py --output release/repro \
+            --build-sha "$GITHUB_SHA" --source-date-epoch "$epoch"
+          for kind in private public; do
+            archive="$(find release -maxdepth 1 -type f \
+              -name "signal-room-${kind}-*.tar.gz" -print -quit)"
+            test -n "$archive"
+            cmp --silent "$archive" "release/repro/$(basename "$archive")"
+          done
+      - name: Verify both primary bundles
+        run: |
+          mapfile -d '' bundles < <(find release -maxdepth 1 -type d \
+            \( -name 'signal-room-private-*' -o -name 'signal-room-public-*' \) -print0)
+          test "${#bundles[@]}" -eq 2
+          for bundle in "${bundles[@]}"; do
+            python deploy/verify-release.py "$bundle"
+          done
+      - name: Smoke-test an offline private install
+        run: |
+          bundle="$(find release -maxdepth 1 -type d -name 'signal-room-private-*' -print -quit)"
+          test -n "$bundle"
+          python -m venv /tmp/signal-room-offline
+          /tmp/signal-room-offline/bin/python -m pip install \
+            --disable-pip-version-check --no-index --find-links "$bundle/wheelhouse" \
+            --require-hashes -r "$bundle/requirements.lock"
+          /tmp/signal-room-offline/bin/python -m pip install \
+            --disable-pip-version-check --no-index --no-deps "$bundle"/wheels/signal_room-*.whl
+          /tmp/signal-room-offline/bin/signal-room --help
+      - name: Preserve verified release archives
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1; pragma: allowlist secret
+        with:
+          name: signal-room-bundles-${{ github.sha }}
+          path: |
+            release/signal-room-private-*.tar.gz
+            release/signal-room-private-*.tar.gz.sha256
+            release/signal-room-public-*.tar.gz
+            release/signal-room-public-*.tar.gz.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
