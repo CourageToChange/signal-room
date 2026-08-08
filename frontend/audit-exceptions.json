@@ -1,12 +1,1 @@
-[
-  {
-    "advisory": "GHSA-qwww-vcr4-c8h2",
-    "package": "react-router",
-    "title": "React Router: RSC Mode CSRF Bypass Allows Action Execution Before 400 Response",
-    "reason": "The bypass is in React Router's RSC (server components) mode. This frontend is a static single-page app. Its entire use of the library is BrowserRouter in private-main.tsx, and Link, NavLink, Route, Routes, useNavigate and useParams in PrivateApp.tsx, plus MemoryRouter in one test; there is no react-router.config.ts, no server request handler, no framework or data-router mode and no actions or loaders. The vulnerable code path is neither installed nor executed, and the routed bundle is the private console, which is reachable only through Cloudflare Access. The only forward fix in 7.x is a downgrade to 7.11.0 or a major bump to 8.2.1+, which would move a production dependency of a tagged release for a defect that cannot fire here.",
-    "reviewedBy": "Noorun Nobi",
-    "reviewedOn": "2026-07-25",
-    "expires": "2026-08-24",
-    "reevaluateIf": "The app adopts RSC, React Router framework mode, a data router with actions, or any server-side request handler. Any of those makes the path reachable and this exception invalid immediately."
-  }
-]
+[]
