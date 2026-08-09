@@ -13,6 +13,8 @@ does not imply production promotion.
 For the private console, incident workflow, maintenance windows, diagnostics, and the
 fictional drill, see the [User guide](USER-GUIDE.md).
 
+Read the full case study at [noor.noorfamily.uk](https://noor.noorfamily.uk).
+
 Signal Room never receives a shell, SSH agent, Docker socket, service-control API, or
 automated remediation capability.
 
