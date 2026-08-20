@@ -1,25 +1,30 @@
 # Signal Room
 
-Signal Room is a read-only, dependency-aware homelab operations console. It combines
-privilege-separated Proxmox telemetry, exact backup-job state, constrained HTTPS checks,
-and TLS expiry into one service map. Confirmed shared failures become one correlated
-incident with an immutable evidence timeline instead of an alert storm.
+I built this to watch my own homelab without being able to break it. It is a read-only,
+dependency-aware operations console that pulls privilege-separated Proxmox telemetry, exact
+backup-job state, constrained HTTPS checks and TLS expiry into one service map.
 
-Signal Room treats `v1.0.0` as supported only when that exact immutable artifact completes
-the restore, rollback, resource, Access, Tunnel, firewall, and uninterrupted 24-hour
-soak gates recorded in the private release runbook. A release-candidate tag alone
-does not imply production promotion.
+Correlation is the reason it exists. When several services fail because one thing underneath
+them failed, I get a single incident with an immutable evidence timeline instead of an alert
+storm.
 
-For the private console, incident workflow, maintenance windows, diagnostics, and the
-fictional drill, see the [User guide](USER-GUIDE.md).
+It cannot touch anything it watches. Signal Room never receives a shell, an SSH agent, a Docker
+socket, a service-control API, or any way to remediate automatically. That was the constraint
+from the start, because a monitoring tool with write access to the thing it monitors is a worse
+problem than the one it solves.
+
+I only call a version supported once that exact immutable artifact has been through the restore,
+rollback, resource, Access, Tunnel, firewall and uninterrupted 24-hour soak gates recorded in the
+private release runbook. A release-candidate tag on its own does not mean it is running anywhere.
+
+The repository also builds **Pressure Drop**, a public incident drill. Everything in it is
+fictional, and the build is static, analytics-free, cookie-free, storage-free and
+network-isolated.
+
+For the private console, incident workflow, maintenance windows, diagnostics and the drill, see
+the [User guide](USER-GUIDE.md).
 
 Read the full case study at [noor.noorfamily.uk](https://noor.noorfamily.uk).
-
-Signal Room never receives a shell, SSH agent, Docker socket, service-control API, or
-automated remediation capability.
-
-The repository also produces the **Pressure Drop** public drill. That build is fictional,
-static, analytics-free, cookie-free, storage-free, and network-isolated.
 
 ![Signal Room Pressure Drop incident drill](docs/screenshots/pressure-drop-desktop-incident.png)
 
@@ -100,8 +105,8 @@ arbitrary repository tree.
 
 ## Deployment boundary
 
-The private target is a clean unprivileged container of its own. a separate backup container and its backup archives remain
-untouched. The public demo is deployed only from the public static bundle. No script in
+The private target is a clean unprivileged container of its own, and a separate backup container
+and its archives stay untouched. The public demo is deployed only from the public static bundle. No script in
 this repository creates or changes a Proxmox guest, token, firewall, backup job, DNS
 record, Cloudflare Tunnel, Access application, or Pages project automatically. Follow
 the private deployment runbook, which is deliberately not published: it maps real

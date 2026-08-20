@@ -38,7 +38,7 @@
 | Webhook data leak/spoof | Redacted schema, event UUID, HMAC-SHA256, no notes/metrics/credentials/private URLs |
 | SSE exhaustion | One broadcaster, replay limit, per-client bounded queue, connection cap, polling fallback |
 | Demo privacy leak | Separate entrypoint, no private imports, network-disabled CSP, source/artifact scans |
-| Container breakout impact | Unprivileged clean the target container, no devices/nesting/SSH, hardened units, no capabilities, egress firewall |
+| Container breakout impact | Unprivileged, clean target container, no devices/nesting/SSH, hardened units, no capabilities, egress firewall |
 
 ## Accepted limits
 
